@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'models/product.dart';
+import 'screens/product_form.dart';
+import 'screens/product_list.dart';
 
 class ItemHomepage {
   final String name;
@@ -8,18 +11,61 @@ class ItemHomepage {
   ItemHomepage(this.name, this.icon, this.color);
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   MyHomePage({super.key});
 
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
   final String nama = "Salsabila Salimah";
   final String npm = "2406432734";
   final String kelas = "F";
+
+  List<Product> products = [];
 
   final List<ItemHomepage> items = [
     ItemHomepage("All Products", Icons.shopping_bag, Colors.blue),
     ItemHomepage("My Products", Icons.store, Colors.green),
     ItemHomepage("Create Product", Icons.add_circle, Colors.red),
   ];
+
+  VoidCallback getOnTap(ItemHomepage item) {
+    if (item.name == "Create Product") {
+      return () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductFormPage(
+              onAddProduct: (product) {
+                setState(() {
+                  products.add(product);
+                });
+              },
+            ),
+          ),
+        );
+      };
+    } else if (item.name == "All Products" || item.name == "My Products") {
+      return () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductListPage(products: products),
+          ),
+        );
+      };
+    } else {
+      return () {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('Unknown action')),
+          );
+      };
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +75,51 @@ class MyHomePage extends StatelessWidget {
         title: const Text(
           'Meowl Store',
           style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text(
+                'Meowl Store',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Halaman Utama'),
+              onTap: () {
+                Navigator.pop(context); // close drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('Tambah Produk'),
+              onTap: () {
+                Navigator.pop(context); // close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductFormPage(
+                      onAddProduct: (product) {
+                        setState(() {
+                          products.add(product);
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
       body: SingleChildScrollView(
@@ -66,7 +157,7 @@ class MyHomePage extends StatelessWidget {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 physics: const NeverScrollableScrollPhysics(),
-                children: items.map((item) => ItemCard(item)).toList(),
+                children: items.map((item) => ItemCard(item, onTap: getOnTap(item))).toList(),
               ),
             ],
           ),
@@ -113,8 +204,9 @@ class InfoCard extends StatelessWidget {
 
 class ItemCard extends StatelessWidget {
   final ItemHomepage item;
+  final VoidCallback onTap;
 
-  const ItemCard(this.item, {super.key});
+  const ItemCard(this.item, {super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -122,22 +214,7 @@ class ItemCard extends StatelessWidget {
       color: item.color,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
-        onTap: () {
-          String message = "";
-          if (item.name == "All Products") {
-            message = "Kamu telah menekan tombol All Products";
-          } else if (item.name == "My Products") {
-            message = "Kamu telah menekan tombol My Products";
-          } else if (item.name == "Create Product") {
-            message = "Kamu telah menekan tombol Create Product";
-          }
-
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(content: Text(message)),
-            );
-        },
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(12),
           child: Center(
