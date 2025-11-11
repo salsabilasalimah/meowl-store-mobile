@@ -1,37 +1,19 @@
-1. Jelaskan apa itu widget tree pada Flutter dan bagaimana hubungan parent-child (induk-anak) bekerja antar widget.
-= Widget tree dapat diibaratkan seperti pohon struktur dari tampilan aplikasi Flutter. Semua yang ada di layar teks, tombol, kolom, sampai kartu semuanya adalah widget yang tersusun secara bertingkat dari atas ke bawah.
-Setiap widget bisa memiliki parent (induk) dan child (anak). Parent itu yang membungkus atau menaungi widget lain, sedangkan child adalah widget yang ada di dalamnya.
-Misalnya di proyekku, Scaffold jadi parent dari Column, lalu Column punya beberapa child seperti InfoCard dan GridView. Hubungan ini penting karena posisi, tampilan, dan perilaku widget saling bergantung pada parent-nya.
+1. Jelaskan perbedaan antara `Navigator.push()` dan `Navigator.pushReplacement()` pada Flutter. Dalam kasus apa sebaiknya masing-masing digunakan pada aplikasi Football Shop kamu?
 
-2. Sebutkan semua widget yang kamu gunakan dalam proyek ini dan jelaskan fungsinya.
--MaterialApp : Sebagai wadah utama aplikasi yang menerapkan gaya desain Material Design
--Scaffold : Menyediakan struktur dasar halaman seperti AppBar dan body
--AppBar : Bagian atas halaman yang menampilkan judul “Meowl Store”
--Center : Untuk menempatkan konten di tengah layar
--Column : Menyusun widget di dalamnya secara vertikal
--Padding : Memberi jarak di sekitar widget biar tampilannya nggak mepet
--GridViewcount : Menampilkan kumpulan tombol dalam bentuk grid (3 kolom)
--Card : Membungkus informasi seperti nama, NPM, dan kelas biar tampil lebih rapi
--Container : Untuk mengatur ukuran, padding, dan background widget
--Text : Menampilkan tulisan seperti nama, NPM, atau teks tombol
--Icon : Menampilkan ikon di setiap tombol
--Material dan InkWell : Biar tombol bisa diklik dan muncul efek ripple saat ditekan
--SnackBar : Menampilkan pesan sementara di bawah layar saat tombol ditekan
+   `Navigator.push()` menambahkan halaman baru ke stack navigasi, sehingga pengguna bisa kembali ke halaman sebelumnya dengan tombol back. `Navigator.pushReplacement()` mengganti halaman saat ini dengan halaman baru, sehingga halaman sebelumnya dihapus dari stack dan pengguna tidak bisa kembali.
 
-3. Apa fungsi dari widget MaterialApp? Jelaskan mengapa widget ini sering digunakan sebagai widget root.
-= MaterialApp berfungsi sebagai pembungkus utama dari seluruh aplikasi Flutter yang memakai gaya Material Design. Widget ini penting karena dapat mengatur hal-hal dasar seperti tema warna, navigasi antar halaman, dan tampilan bawaan aplikasi. Biasanya dijadikan widget root karena semua widget lain perlu berada di bawah struktur MaterialApp supaya bisa menggunakan gaya dan fitur desain material.
+   Pada aplikasi Meowl Store, saya menggunakan `Navigator.push()` untuk navigasi ke halaman form dan list, karena pengguna mungkin ingin kembali ke halaman utama. `Navigator.pushReplacement()` bisa digunakan jika setelah login atau splash screen, di mana tidak perlu kembali.
 
-4. Jelaskan perbedaan antara StatelessWidget dan StatefulWidget. Kapan kamu memilih salah satunya?
--StatelessWidget : Dipakai kalau tampilan tidak berubah selama aplikasi berjalan. Contohnya halaman yang hanya menampilkan teks statis atau tombol yang tidak mengubah data.
--StatefulWidget : Dipakai kalau tampilan bisa berubah karena interaksi pengguna atau data baru. Misalnya, form input, halaman dengan counter, atau tampilan yang tergantung kondisi tertentu.
-Dalam proyek ini aku pakai StatelessWidget karena data seperti nama, NPM, dan tombolnya tidak berubah-ubah.
+2. Bagaimana kamu memanfaatkan hierarchy widget seperti `Scaffold`, `AppBar`, dan `Drawer` untuk membangun struktur halaman yang konsisten di seluruh aplikasi?
 
-5. Apa itu BuildContext dan mengapa penting di Flutter? Bagaimana penggunaannya di metode build?
-=BuildContext itu semacam penanda posisi widget di dalam widget tree. Penting karena digunakan Flutter untuk tahu di mana suatu widget berada, dan widget apa saja yang mengelilinginya.
-Di metode build(), BuildContext dipakai supaya widget bisa mengakses data dari parent-nya, seperti tema warna atau Scaffold yang dibutuhkan untuk menampilkan SnackBar.
+   `Scaffold` digunakan sebagai struktur dasar setiap halaman, menyediakan `AppBar` untuk judul dan `Drawer` untuk navigasi. `AppBar` memberikan konsistensi di bagian atas dengan judul aplikasi. `Drawer` menyediakan menu navigasi yang bisa diakses dari semua halaman, memungkinkan pengguna berpindah antar halaman dengan mudah. Ini membuat aplikasi terasa terstruktur dan mudah dinavigasi.
 
-6. Jelaskan konsep "hot reload" di Flutter dan bagaimana bedanya dengan "hot restart".
--Hot Reload : Digunakan untuk memperbarui tampilan aplikasi tanpa mengulang dari awal. Jadi pas kita ubah kode, hasilnya langsung muncul di emulator tanpa kehilangan state (misalnya posisi halaman atau inputan masih tetap).
--Hot Restart : Memulai ulang aplikasi dari awal. Semua state atau data sementara akan hilang, dan aplikasi kembali ke kondisi awal seperti baru dijalankan.
+3. Dalam konteks desain antarmuka, apa kelebihan menggunakan layout widget seperti `Padding`, `SingleChildScrollView`, dan `ListView` saat menampilkan elemen-elemen form? Berikan contoh penggunaannya dari aplikasi kamu.
 
-Hot reload lebih sering dipakai waktu proses ngoding biar lebih cepat lihat hasil perubahan.
+   `Padding` memberikan ruang di sekitar widget agar tidak terlalu mepet, meningkatkan keterbacaan dan estetika. `SingleChildScrollView` memungkinkan konten bisa di-scroll jika melebihi layar, seperti di halaman form yang panjang. `ListView` efisien untuk menampilkan daftar item, seperti di halaman list produk.
+
+   Di aplikasi saya, `Padding` digunakan di sekitar form fields untuk jarak yang rapi. `SingleChildScrollView` membungkus form agar bisa di-scroll di perangkat kecil. `ListView` digunakan di halaman list produk untuk menampilkan produk dalam daftar yang bisa di-scroll.
+
+4. Bagaimana kamu menyesuaikan warna tema agar aplikasi Football Shop memiliki identitas visual yang konsisten dengan brand toko?
+
+   Saya menggunakan `ThemeData` di `MaterialApp` dengan `primarySwatch: Colors.blue` untuk warna utama biru. `AppBar` dan tombol menggunakan warna biru untuk konsistensi. Drawer header juga biru. Ini menciptakan identitas visual yang solid, meskipun untuk brand toko mungkin perlu warna khusus, tapi di sini saya gunakan biru.
