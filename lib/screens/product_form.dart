@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 import '../models/product.dart';
+import '../config.dart';
+import 'menu.dart';
 
 class ProductFormPage extends StatefulWidget {
   final Function(Product) onAddProduct;
@@ -15,12 +20,14 @@ class _ProductFormPageState extends State<ProductFormPage> {
   String _name = "";
   int _price = 0;
   String _description = "";
-  String _thumbnail = "";
+  String _thumbnail =
+      "https://contents.mediadecathlon.com/p2571247/k\$848103e1194da4ca59b9ab6b60c81418/bola-sepak-jahit-untuk-latihan-ukuran-4-putih-kipsta-8789908.jpg?f=1920x0&format=auto";
   String _category = "";
   bool _isFeatured = false;
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Product'),
@@ -98,9 +105,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     });
                   },
                   validator: (String? value) {
-                    if (value == null || value.isEmpty) {
-                      return "Description cannot be empty!";
-                    }
+                    // Description is optional
                     return null;
                   },
                 ),
@@ -121,12 +126,11 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     });
                   },
                   validator: (String? value) {
-                    if (value == null || value.isEmpty) {
-                      return "Thumbnail cannot be empty!";
-                    }
-                    // Basic URL validation
-                    if (!Uri.parse(value).isAbsolute) {
-                      return "Thumbnail must be a valid URL!";
+                    if (value != null && value.isNotEmpty) {
+                      // Basic URL validation if provided
+                      if (!Uri.parse(value).isAbsolute) {
+                        return "Thumbnail must be a valid URL!";
+                      }
                     }
                     return null;
                   },
@@ -173,49 +177,129 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   padding: const EdgeInsets.all(8.0),
                   child: ElevatedButton(
                     style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(Colors.blue),
+                      backgroundColor: WidgetStateProperty.all(Colors.blue),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        Product newProduct = Product(
-                          name: _name,
-                          price: _price,
-                          description: _description,
-                          thumbnail: _thumbnail,
-                          category: _category,
-                          isFeatured: _isFeatured,
-                        );
-                        widget.onAddProduct(newProduct);
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text('Product Added'),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Name: $_name'),
-                                    Text('Price: $_price'),
-                                    Text('Description: $_description'),
-                                    Text('Thumbnail: $_thumbnail'),
-                                    Text('Category: $_category'),
-                                    Text('Is Featured: $_isFeatured'),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  child: const Text('OK'),
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    Navigator.pop(context); // back to home
-                                  },
-                                ),
-                              ],
+                        // Show loading indicator
+                        if (context.mounted) {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+
+                        try {
+                          print(
+                            'Submitting product to: ${Config.baseUrl}/create-product/',
+                          );
+                          print(
+                            'Data: name=$_name, price=$_price, description=$_description, thumbnail=$_thumbnail, category=$_category, is_featured=$_isFeatured',
+                          );
+
+                          final response = await request.postJson(
+                            "http://localhost:8000/create-flutter/",
+                            jsonEncode({
+                              "name": _name,
+                              "price": _price.toString(),
+                              "description": _description,
+                              "thumbnail": _thumbnail,
+                              "category": _category,
+                              "is_featured": _isFeatured.toString(),
+                            }),
+                          );
+
+                          // Close loading dialog
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+
+                          // Check if response is HTML (error page from Django)
+                          if (response is String &&
+                              response.trim().startsWith('<!DOCTYPE')) {
+                            throw Exception(
+                              'Server returned HTML instead of JSON. Please check:\n1. Django server is running at ${Config.baseUrl}\n2. Endpoint /create-flutter/ exists\n3. CORS is configured correctly',
                             );
-                          },
-                        );
+                          }
+
+                          if (context.mounted) {
+                            if (response != null &&
+                                response['status'] == 'success') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Product successfully saved!"),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MyHomePage(),
+                                ),
+                              );
+                            } else {
+                              // Show detailed error message from server
+                              String errorMsg =
+                                  response?['message'] ??
+                                  response?['error'] ??
+                                  response?['detail'] ??
+                                  "Something went wrong, please try again.";
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMsg),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 5),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          // Close loading dialog if still open
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+
+                          String errorMessage = "Failed to create product";
+
+                          // Check for specific error types
+                          String errorStr = e.toString();
+                          if (errorStr.contains('<!DOCTYPE') ||
+                              errorStr.contains('FormatException')) {
+                            errorMessage =
+                                "Cannot connect to Django server.\n\nPlease ensure:\n1. Django server is running at ${Config.baseUrl}\n2. Endpoint /create-product/ exists\n3. CORS is configured correctly";
+                          } else if (errorStr.contains('400')) {
+                            errorMessage =
+                                "Bad Request (400). Please check:\n1. All required fields are filled\n2. Data format is correct\n3. Server endpoint accepts this data";
+                          } else if (errorStr.contains('401') ||
+                              errorStr.contains('403')) {
+                            errorMessage =
+                                "Authentication required. Please login first.";
+                          } else if (errorStr.contains('404')) {
+                            errorMessage =
+                                "Endpoint not found (404). Please check if /create-product/ exists in Django.";
+                          } else if (errorStr.contains('500')) {
+                            errorMessage =
+                                "Server error (500). Please check Django server logs.";
+                          } else {
+                            errorMessage = "Error: ${e.toString()}";
+                          }
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(errorMessage),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 6),
+                              ),
+                            );
+                          }
+
+                          print('Error creating product: $e');
+                        }
                       }
                     },
                     child: const Text(

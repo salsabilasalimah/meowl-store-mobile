@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'models/product.dart';
-import 'screens/product_form.dart';
-import 'screens/product_list.dart';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import '../models/product.dart';
+import '../widgets/left_drawer.dart';
+import 'product_form.dart';
+import 'product_entry_list.dart';
 
 class ItemHomepage {
   final String name;
@@ -12,7 +15,7 @@ class ItemHomepage {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({super.key});
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -31,9 +34,9 @@ class _MyHomePageState extends State<MyHomePage> {
     ItemHomepage("Create Product", Icons.add_circle, Colors.red),
   ];
 
-  VoidCallback getOnTap(ItemHomepage item) {
+  Future<void> Function() getOnTap(ItemHomepage item, CookieRequest request) {
     if (item.name == "Create Product") {
-      return () {
+      return () async {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -47,17 +50,26 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         );
       };
-    } else if (item.name == "All Products" || item.name == "My Products") {
-      return () {
+    } else if (item.name == "All Products") {
+      return () async {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductListPage(products: products),
+            builder: (context) => const ProductEntryListPage(filterByUser: false),
+          ),
+        );
+      };
+    } else if (item.name == "My Products") {
+      return () async {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProductEntryListPage(filterByUser: true),
           ),
         );
       };
     } else {
-      return () {
+      return () async {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
@@ -69,6 +81,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
@@ -77,51 +90,7 @@ class _MyHomePageState extends State<MyHomePage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text(
-                'Meowl Store',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Halaman Utama'),
-              onTap: () {
-                Navigator.pop(context); // close drawer
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('Tambah Produk'),
-              onTap: () {
-                Navigator.pop(context); // close drawer
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductFormPage(
-                      onAddProduct: (product) {
-                        setState(() {
-                          products.add(product);
-                        });
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: const LeftDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -157,7 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 physics: const NeverScrollableScrollPhysics(),
-                children: items.map((item) => ItemCard(item, onTap: getOnTap(item))).toList(),
+                children: items.map((item) => ItemCard(item, onTap: getOnTap(item, request))).toList(),
               ),
             ],
           ),
@@ -204,7 +173,7 @@ class InfoCard extends StatelessWidget {
 
 class ItemCard extends StatelessWidget {
   final ItemHomepage item;
-  final VoidCallback onTap;
+  final Future<void> Function() onTap;
 
   const ItemCard(this.item, {super.key, required this.onTap});
 
@@ -214,7 +183,7 @@ class ItemCard extends StatelessWidget {
       color: item.color,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
-        onTap: onTap,
+        onTap: () async { await onTap(); },
         child: Container(
           padding: const EdgeInsets.all(12),
           child: Center(
@@ -240,3 +209,4 @@ class ItemCard extends StatelessWidget {
     );
   }
 }
+
