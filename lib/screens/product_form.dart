@@ -19,11 +19,21 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _formKey = GlobalKey<FormState>();
   String _name = "";
   int _price = 0;
+  int _stock = 0;
   String _description = "";
   String _thumbnail =
       "https://contents.mediadecathlon.com/p2571247/k\$848103e1194da4ca59b9ab6b60c81418/bola-sepak-jahit-untuk-latihan-ukuran-4-putih-kipsta-8789908.jpg?f=1920x0&format=auto";
   String _category = "";
   bool _isFeatured = false;
+
+  // Category choices matching Django CATEGORY_CHOICES
+  final List<Map<String, String>> _categoryChoices = [
+    {'value': 'accessories', 'label': 'Accessories'},
+    {'value': 'jersey', 'label': 'Jersey'},
+    {'value': 'sepatu', 'label': 'Sepatu'},
+    {'value': 'bola', 'label': 'Bola'},
+    {'value': 'kaos kaki', 'label': 'Kaos kaki'},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +62,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _name = value!;
+                      _name = value ?? "";
                     });
                   },
                   validator: (String? value) {
@@ -73,9 +83,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
+                  keyboardType: TextInputType.number,
                   onChanged: (String? value) {
                     setState(() {
-                      _price = int.tryParse(value!) ?? 0;
+                      _price = int.tryParse(value ?? "") ?? 0;
                     });
                   },
                   validator: (String? value) {
@@ -93,6 +104,33 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 padding: const EdgeInsets.all(8.0),
                 child: TextFormField(
                   decoration: InputDecoration(
+                    hintText: "Product Stock",
+                    labelText: "Stock",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (String? value) {
+                    setState(() {
+                      _stock = int.tryParse(value ?? "") ?? 0;
+                    });
+                  },
+                  validator: (String? value) {
+                    if (value == null || value.isEmpty) {
+                      return "Stock cannot be empty!";
+                    }
+                    if (int.tryParse(value) == null) {
+                      return "Stock must be a number!";
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextFormField(
+                  decoration: InputDecoration(
                     hintText: "Product Description",
                     labelText: "Description",
                     border: OutlineInputBorder(
@@ -101,7 +139,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _description = value!;
+                      _description = value ?? "";
                     });
                   },
                   validator: (String? value) {
@@ -122,7 +160,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   ),
                   onChanged: (String? value) {
                     setState(() {
-                      _thumbnail = value!;
+                      _thumbnail = value ?? "";
                     });
                   },
                   validator: (String? value) {
@@ -138,22 +176,29 @@ class _ProductFormPageState extends State<ProductFormPage> {
               ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: TextFormField(
+                child: DropdownButtonFormField<String>(
                   decoration: InputDecoration(
-                    hintText: "Product Category",
                     labelText: "Category",
+                    hintText: "Select Category",
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(5.0),
                     ),
                   ),
+                  value: _category.isEmpty ? null : _category,
+                  items: _categoryChoices.map((category) {
+                    return DropdownMenuItem<String>(
+                      value: category['value'],
+                      child: Text(category['label']!),
+                    );
+                  }).toList(),
                   onChanged: (String? value) {
                     setState(() {
-                      _category = value!;
+                      _category = value ?? "";
                     });
                   },
                   validator: (String? value) {
                     if (value == null || value.isEmpty) {
-                      return "Category cannot be empty!";
+                      return "Please select a category!";
                     }
                     return null;
                   },
@@ -193,23 +238,26 @@ class _ProductFormPageState extends State<ProductFormPage> {
                         }
 
                         try {
+                          final requestData = {
+                            "name": _name,
+                            "price": _price,  // Send as integer, not string
+                            "stock": _stock,  // Stock field required by Django
+                            "description": _description,
+                            "thumbnail": _thumbnail,
+                            "category": _category,
+                            "is_featured": _isFeatured,  // Send as boolean, not string
+                          };
+                          
                           print(
-                            'Submitting product to: ${Config.baseUrl}/create-product/',
+                            'Submitting product to: ${Config.baseUrl}/create-flutter/',
                           );
                           print(
-                            'Data: name=$_name, price=$_price, description=$_description, thumbnail=$_thumbnail, category=$_category, is_featured=$_isFeatured',
+                            'Data: ${jsonEncode(requestData)}',
                           );
 
                           final response = await request.postJson(
-                            "http://localhost:8000/create-flutter/",
-                            jsonEncode({
-                              "name": _name,
-                              "price": _price.toString(),
-                              "description": _description,
-                              "thumbnail": _thumbnail,
-                              "category": _category,
-                              "is_featured": _isFeatured.toString(),
-                            }),
+                            "${Config.baseUrl}/create-flutter/",
+                            jsonEncode(requestData),
                           );
 
                           // Close loading dialog
@@ -243,16 +291,40 @@ class _ProductFormPageState extends State<ProductFormPage> {
                               );
                             } else {
                               // Show detailed error message from server
-                              String errorMsg =
-                                  response?['message'] ??
-                                  response?['error'] ??
-                                  response?['detail'] ??
-                                  "Something went wrong, please try again.";
+                              String errorMsg = "Something went wrong, please try again.";
+                              
+                              // Try to extract error message from Django response
+                              if (response != null) {
+                                // Check for common Django error formats
+                                if (response['detail'] != null) {
+                                  errorMsg = response['detail'].toString();
+                                } else if (response['message'] != null) {
+                                  errorMsg = response['message'].toString();
+                                } else if (response['error'] != null) {
+                                  errorMsg = response['error'].toString();
+                                } else {
+                                  // Check for field-specific errors
+                                  List<String> fieldErrors = [];
+                                  response.forEach((key, value) {
+                                    if (value is List && value.isNotEmpty) {
+                                      fieldErrors.add("$key: ${value.join(', ')}");
+                                    } else if (value is String) {
+                                      fieldErrors.add("$key: $value");
+                                    }
+                                  });
+                                  if (fieldErrors.isNotEmpty) {
+                                    errorMsg = fieldErrors.join('\n');
+                                  }
+                                }
+                              }
+                              
+                              print('Server error response: $response');
+                              
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(errorMsg),
                                   backgroundColor: Colors.red,
-                                  duration: const Duration(seconds: 5),
+                                  duration: const Duration(seconds: 6),
                                 ),
                               );
                             }
