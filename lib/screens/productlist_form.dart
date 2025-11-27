@@ -6,6 +6,5 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 Widget build(BuildContext context) {
     final request = context.watch<CookieRequest>();
     return Scaffold(
-      // ... rest of your code
     );
 }
